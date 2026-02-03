@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Will you be my Valentine?</title>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(circle at 10% 10%, #ffdde1, transparent 20%),
+                  linear-gradient(135deg, #ffb6c1 0%, #ffe6f0 100%);
+      -webkit-user-select:none;
+      user-select:none;
+    }
+
+    .box{
+      width:360px;
+      max-width:92vw;
+      padding:26px;
+      border-radius:18px;
+      background: #fff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+      text-align:center;
+      position:relative;
+    }
+
+    h1{ margin:0 0 8px; color:#ff2e63; font-size:20px }
+    p{ margin:0 0 14px; color:#333; font-size:15px }
+
+    /* Button area where NO can run away */
+    .btnArea{
+      position:relative;
+      width:100%;
+      height:150px;
+      margin-top:6px;
+      margin-bottom:6px;
+      overflow:hidden;
+      touch-action: none; /* improves touch behavior */
+    }
+
+    button{
+      -webkit-tap-highlight-color: transparent;
+      border: none;
+      padding:12px 18px;
+      border-radius:12px;
+      font-weight:700;
+      font-size:15px;
+      cursor:pointer;
+      transition: transform .12s ease, opacity .12s ease;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+    }
+
+    #yesBtn{
+      background:#ff2e63;
+      color:#fff;
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform: translate(-50%, -50%);
+      z-index:5;
+    }
+
+    #noBtn{
+      background:#f0f0f0;
+      color:#333;
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:10;
+      touch-action: manipulation;
+    }
+
+    #result{
+      display:none;
+      margin-top:12px;
+      font-size:17px;
+      color:#ff2e63;
+      font-weight:700;
+      line-height:1.3;
+    }
+
+    .footer{ margin-top:12px; font-size:13px; color:#666 }
+
+    /* small responsiveness */
+    @media (max-width:420px){
+      .box{ padding:20px }
+      .btnArea{ height:140px }
+    }
+  </style>
+</head>
+<body>
+  <div class="box" role="main" aria-label="Valentine prompt">
+    <h1>Sreya Dhar 💖</h1>
+    <p>Will you be my Valentine? 🌹</p>
+
+    <div class="btnArea" id="btnArea" aria-hidden="false">
+      <button id="yesBtn" aria-label="Yes">YES 😍</button>
+      <button id="noBtn" aria-label="No">NO 😤</button>
+    </div>
+
+    <div id="result" aria-live="polite">
+      Yayyy Sreya Dhar!!! 💖🥺<br>
+      Made with love — Debjit 💌
+    </div>
+
+    <div class="footer">Try to click NO 😉</div>
+  </div>
+
+  <script>
+    (function(){
+      const yesBtn = document.getElementById('yesBtn');
+      const noBtn  = document.getElementById('noBtn');
+      const btnArea = document.getElementById('btnArea');
+      const result = document.getElementById('result');
+
+      let lastMove = 0;
+      const THROTTLE_MS = 120; // avoid excessive moves
+      const PROXIMITY = 110;   // distance in px to trigger escape
+      let areaRect, btnRect;
+
+      function updateRects(){
+        areaRect = btnArea.getBoundingClientRect();
+        btnRect  = noBtn.getBoundingClientRect();
+      }
+
+      // Place NO at a random safe position inside btnArea
+      function moveNoRandom() {
+        updateRects();
+        // recalc sizes after any style/layout change
+        const maxX = Math.max(0, areaRect.width - btnRect.width);
+        const maxY = Math.max(0, areaRect.height - btnRect.height);
+        const randX = Math.floor(Math.random() * (maxX + 1));
+        const randY = Math.floor(Math.random() * (maxY + 1));
+        noBtn.style.left = randX + 'px';
+        noBtn.style.top  = randY + 'px';
+      }
+
+      // Move away to a new random position (with a small animation)
+      function escapeNo() {
+        const now = Date.now();
+        if (now - lastMove < THROTTLE_MS) return;
+        lastMove = now;
+        moveNoRandom();
+      }
+
+      // Mouse move handler - if cursor gets too close to NO, it escapes
+      function onMouseMove(e){
+        updateRects();
+        const x = e.clientX - areaRect.left;
+        const y = e.clientY - areaRect.top;
+        const noRect = noBtn.getBoundingClientRect();
+        const nbCenterX = (noRect.left - areaRect.left) + noRect.width/2;
+        const nbCenterY = (noRect.top  - areaRect.top)  + noRect.height/2;
+        const dist = Math.hypot(x - nbCenterX, y - nbCenterY);
+        if (dist < PROXIMITY) escapeNo();
+      }
+
+      // Touch move handler (mobile)
+      function onTouchMove(e){
+        if (!e.touches || e.touches.length === 0) return;
+        updateRects();
+        const t = e.touches[0];
+        const x = t.clientX - areaRect.left;
+        const y = t.clientY - areaRect.top;
+        const noRect = noBtn.getBoundingClientRect();
+        const nbCenterX = (noRect.left - areaRect.left) + noRect.width/2;
+        const nbCenterY = (noRect.top  - areaRect.top)  + noRect.height/2;
+        const dist = Math.hypot(x - nbCenterX, y - nbCenterY);
+        if (dist < PROXIMITY) {
+          // prevent the tap from registering and move the button away
+          e.preventDefault();
+          escapeNo();
+        }
+      }
+
+      // If user taps the NO button directly (rare), make it run away
+      noBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        escapeNo();
+      });
+
+      // Also on touchstart - prevents immediate tap
+      noBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        escapeNo();
+      }, {passive:false});
+
+      // Setup proximity listeners on the area
+      btnArea.addEventListener('mousemove', onMouseMove);
+      btnArea.addEventListener('touchmove', onTouchMove, {passive:false});
+
+      // When YES clicked -> hide buttons and show result
+      yesBtn.addEventListener('click', () => {
+        btnArea.style.display = 'none';
+        result.style.display = 'block';
+        // small flourish
+        result.animate([
+          { transform: 'scale(0.96)', opacity: 0 },
+          { transform: 'scale(1.00)', opacity: 1 }
+        ], { duration: 300, easing: 'ease-out' });
+      });
+
+      // Ensure NO starts in a random safe place after layout
+      function init(){
+        // small delay to let fonts/layout settle
+        setTimeout(() => {
+          updateRects();
+          moveNoRandom();
+        }, 80);
+      }
+
+      // Reposition on resize so NO stays visible inside area
+      window.addEventListener('resize', () => {
+        setTimeout(() => {
+          updateRects();
+          // if current position is out of bounds, re-randomize
+          const noRect = noBtn.getBoundingClientRect();
+          if (noRect.right > areaRect.right || noRect.bottom > areaRect.bottom) {
+            moveNoRandom();
+          }
+        }, 120);
+      });
+
+      // initialize now
+      init();
+    })();
+  </script>
+</body>
+</html>
